@@ -18,14 +18,17 @@ def get_builds(device=None):
         key = key.decode('utf-8')
         filepath = key[5:]
         _, _, device, date, filename = filepath.split('/')
+        _, version, _, buildtype, _, _ = filename.split('-')
         h = r.hgetall(key)
         db.setdefault(device, []).append({
             'sha256': h[b'sha256'].decode('utf-8'),
             'sha1': h[b'sha1'].decode('utf-8'),
             'size': int(h[b'size'].decode('utf-8')),
-            'date': date,
+            'date': '{}-{}-{}'.format(date[0:4], date[4:6], date[6:8]),
             'filename': filename,
-            'filepath': filepath
+            'filepath': filepath,
+            'version': version,
+            'type': buildtype
         })
     for key in db.keys():
         db[key] = sorted(db[key], key=lambda k: k['date'], reverse=True)
