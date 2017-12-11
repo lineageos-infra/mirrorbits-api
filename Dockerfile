@@ -7,4 +7,6 @@ RUN pip install -r requirements.txt
 
 EXPOSE 8084
 
+ENV prometheus_multiproc_dir=/app/metrics/
+
 CMD gunicorn -b 127.0.0.1:8084 -w 4 app:app
