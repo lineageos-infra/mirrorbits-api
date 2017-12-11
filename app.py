@@ -55,7 +55,7 @@ def stop_timer(response):
 def get(device):
     return jsonify(get_builds(device))
 
-@app.route('/metrics')
+@app.route('/api/metrics')
 def metrics():
     registry = CollectorRegistry()
     multiprocess.MultiProcessCollector(registry)
