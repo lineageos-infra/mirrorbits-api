@@ -36,7 +36,7 @@ def get_builds(device=None):
             'type': buildtype
         })
     for key in db.keys():
-        db[key] = sorted(db[key], key=lambda k: k['date'])
+        db[key] = sorted(db[key], key=lambda k: k['date'], reverse=True)
     return db
 
 @app.before_request
