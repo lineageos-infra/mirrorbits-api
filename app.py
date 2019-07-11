@@ -20,15 +20,19 @@ BASE_PATH = os.environ.get("MIRROR_BASE_PATH", "/data/mirror")
 
 def get_builds(device=None):
     if device:
-        path = "FILE_/full/{}/*".format(device)
+        path = "FILE_/full/{}/*.zip".format(device)
     else:
-        path = "FILE_/full/*"
+        path = "FILE_/full/*.zip"
     db = {}
     for key in r.keys(path):
         key = key.decode('utf-8')
         filepath = key[5:]
         _, _, device, date, filename = filepath.split('/')
         _, version, _, buildtype, _, _ = filename.split('-')
+        # recovery/bacon/20190711/lineage-16.0-20190711-recovery-bacon.img
+        recoverykey = 'FILE_/recovery/' + device + '/' + date + '/lineage-' + \
+            version + '-' + date + '-recovery-' + device + '.img'
+
         h = r.hgetall(key)
 
         try:
@@ -38,7 +42,7 @@ def get_builds(device=None):
         except:
             timestamp = int(mktime(datetime.strptime(date, '%Y%m%d').timetuple()))
 
-        db.setdefault(device, []).append({
+        info = {
             'sha256': h[b'sha256'].decode('utf-8'),
             'sha1': h[b'sha1'].decode('utf-8'),
             'size': int(h[b'size'].decode('utf-8')),
@@ -48,7 +52,22 @@ def get_builds(device=None):
             'filepath': filepath,
             'version': version,
             'type': buildtype
-        })
+        }
+
+        if r.exists(recoverykey): # not everything will produce a recovery image.
+            filepath = recoverykey[5:]
+            filename = filepath.split('/')[-1]
+            h = r.hgetall(recoverykey)
+            info['recovery'] = {
+                    'sha256': h[b'sha256'].decode('utf-8'),
+                    'sha1': h[b'sha1'].decode('utf-8'),
+                    'size': int(h[b'size'].decode('utf-8')),
+                    'filename': filename,
+                    'filepath': filepath
+            }
+
+
+        db.setdefault(device, []).append(info)
     for key in db.keys():
         db[key] = sorted(db[key], key=lambda k: k['datetime'])
     return db
