@@ -2,6 +2,9 @@ LineageOS Mirrorbits API
 =======================
 Copyright (c) 2017 The LineageOS Project<br>
 
+
+[![Docker Repository on Quay](https://quay.io/repository/lineageos/mirrorbits-api/status "Docker Repository on Quay")](https://quay.io/repository/lineageos/mirrorbits-api)
+
 Development
 ---
 1. Install Mirrorbits (https://github.com/etix/mirrorbits)
