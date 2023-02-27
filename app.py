@@ -26,11 +26,11 @@ app = Flask(__name__)
 
 # This should really be read from env - i doubt anyone else is crazy enough to run this
 config = {
-        "CACHE_DEFAULT_TIMEOUT": 3600,
-        "CACHE_TYPE": "RedisCache",
-        "CACHE_REDIS_HOST": "localhost",
-        "CACHE_REDIS_DB": 3,
-        }
+    "CACHE_DEFAULT_TIMEOUT": 3600,
+    "CACHE_TYPE": "RedisCache",
+    "CACHE_REDIS_HOST": "localhost",
+    "CACHE_REDIS_DB": 3,
+}
 app.config.from_mapping(config)
 cache = Cache(app)
 
@@ -41,6 +41,7 @@ REQUEST_COUNT = Counter(
     "flask_request_count", "Request Count", ["method", "endpoint", "status"]
 )
 BASE_PATH = os.environ.get("MIRROR_BASE_PATH", "/data/mirror")
+
 
 def get_builds_v2(device):
     if device:
@@ -71,21 +72,24 @@ def get_builds_v2(device):
 
         artifacts_dir = os.path.dirname(key)
         for filekey in r.keys(artifacts_dir + "/*"):
-            filekey = filekey.decode('utf-8')
+            filekey = filekey.decode("utf-8")
             h = r.hgetall(filekey)
             filepath = filekey[5:]
-            info["files"].append({
-                "filepath": filepath,
-                "filename": os.path.basename(filepath),
-                "sha256": h[b"sha256"].decode("utf-8"),
-                "sha1": h[b"sha1"].decode("utf-8"),
-                "size": int(h[b"size"].decode("utf-8"))
-            })
+            info["files"].append(
+                {
+                    "filepath": filepath,
+                    "filename": os.path.basename(filepath),
+                    "sha256": h[b"sha256"].decode("utf-8"),
+                    "sha1": h[b"sha1"].decode("utf-8"),
+                    "size": int(h[b"size"].decode("utf-8")),
+                }
+            )
 
         db.setdefault(device, []).append(info)
     for key in db.keys():
         db[key] = sorted(db[key], key=lambda k: k["datetime"])
     return db
+
 
 def get_builds(device=None):
     if device:
@@ -171,11 +175,13 @@ def stop_timer(response):
 def get_v1(device):
     return jsonify(get_builds(device))
 
+
 @app.route("/api/v2/builds/", defaults={"device": None})
 @app.route("/api/v2/builds/<device>")
 @cache.cached()
 def get_v2(device):
     return jsonify(get_builds_v2(device))
+
 
 @app.route("/api/metrics")
 def metrics():
