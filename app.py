@@ -154,12 +154,12 @@ def stop_timer(response):
 
 @app.route("/api/v1/builds/", defaults={"device": None})
 @app.route("/api/v1/builds/<device>")
-def get(device):
+def get_v1(device):
     return jsonify(get_builds(device))
 
 @app.route("/api/v2/builds/", defaults={"device": None})
 @app.route("/api/v2/builds/<device>")
-def get(device):
+def get_v2(device):
     return jsonify(get_builds_v2(device))
 
 @app.route("/api/metrics")
