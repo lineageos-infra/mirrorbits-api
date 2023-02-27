@@ -5,6 +5,8 @@ import zipfile
 
 from datetime import datetime
 from flask import Flask, jsonify, request, Response
+from flask_caching import Cache
+
 from prometheus_client import multiprocess
 from prometheus_client import (
     generate_latest,
@@ -21,6 +23,16 @@ from time import mktime, time
 r = redis.StrictRedis(host="localhost", port=6379, db=0)
 
 app = Flask(__name__)
+
+# This should really be read from env - i doubt anyone else is crazy enough to run this
+config = {
+        "CACHE_DEFAULT_TIMEOUT": 3600,
+        "CACHE_TYPE": "RedisCache",
+        "CACHE_REDIS_HOST": "localhost",
+        "CACHE_REDIS_DB": 3,
+        }
+app.config.from_mapping(config)
+cache = Cache(app)
 
 REQUEST_LATENCY = Histogram(
     "flask_request_latency_seconds", "Request Latency", ["method", "endpoint"]
@@ -155,11 +167,13 @@ def stop_timer(response):
 
 @app.route("/api/v1/builds/", defaults={"device": None})
 @app.route("/api/v1/builds/<device>")
+@cache.cached()
 def get_v1(device):
     return jsonify(get_builds(device))
 
 @app.route("/api/v2/builds/", defaults={"device": None})
 @app.route("/api/v2/builds/<device>")
+@cache.cached()
 def get_v2(device):
     return jsonify(get_builds_v2(device))
 
