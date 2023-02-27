@@ -60,7 +60,7 @@ def get_builds_v2(device):
         artifacts_dir = os.path.dirname(key)
         for filekey in r.keys(artifacts_dir + "/*"):
             filekey = filekey.decode('utf-8')
-            h = r.hgetall(key)
+            h = r.hgetall(filekey)
             filepath = filekey[5:]
             info["files"].append({
                 "filepath": filepath,
