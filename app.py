@@ -116,9 +116,15 @@ def get_builds(device=None):
             "version": version,
             "type": buildtype,
         }
-        recovery = recoverykey if r.exists(recoverykey) else bootkey if r.exists(bootkey) else None
+        recovery = (
+            recoverykey
+            if r.exists(recoverykey)
+            else bootkey
+            if r.exists(bootkey)
+            else None
+        )
 
-        if recovery: # not everything will produce a recovery image.
+        if recovery:  # not everything will produce a recovery image.
             filepath = recovery[5:]
             filename = filepath.split("/")[-1]
             h = r.hgetall(recovery)
