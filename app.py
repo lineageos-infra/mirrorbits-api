@@ -1,7 +1,6 @@
 import os
 import re
 import redis
-import zipfile
 
 from datetime import datetime
 from flask import Flask, jsonify, request, Response
@@ -55,12 +54,7 @@ def get_builds_v2(device):
         _, _, device, date, filename = filepath.split("/")
         _, version, _, buildtype, _, _ = filename.split("-")
 
-        try:
-            with zipfile.ZipFile("{}{}".format(BASE_PATH, filepath), "r") as update_zip:
-                build_prop = update_zip.read("system/build.prop").decode("utf-8")
-                timestamp = int(re.findall("ro.build.date.utc=([0-9]+)", build_prop)[0])
-        except:
-            timestamp = int(mktime(datetime.strptime(date, "%Y%m%d").timetuple()))
+        timestamp = int(mktime(datetime.strptime(date, "%Y%m%d").timetuple()))
 
         info = {
             "date": "{}-{}-{}".format(date[0:4], date[4:6], date[6:8]),
@@ -119,12 +113,7 @@ def get_builds(device=None):
 
         h = r.hgetall(key)
 
-        try:
-            with zipfile.ZipFile("{}{}".format(BASE_PATH, filepath), "r") as update_zip:
-                build_prop = update_zip.read("system/build.prop").decode("utf-8")
-                timestamp = int(re.findall("ro.build.date.utc=([0-9]+)", build_prop)[0])
-        except:
-            timestamp = int(mktime(datetime.strptime(date, "%Y%m%d").timetuple()))
+        timestamp = int(mktime(datetime.strptime(date, "%Y%m%d").timetuple()))
 
         info = {
             "sha256": h[b"sha256"].decode("utf-8"),
