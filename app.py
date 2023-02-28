@@ -97,19 +97,9 @@ def get_builds(device=None):
         _, _, device, date, filename = filepath.split("/")
         _, version, _, buildtype, _, _ = filename.split("-")
         # recovery/bacon/20190711/lineage-16.0-20190711-recovery-bacon.img
-        recoverykey = (
-            "FILE_/recovery/"
-            + device
-            + "/"
-            + date
-            + "/lineage-"
-            + version
-            + "-"
-            + date
-            + "-recovery-"
-            + device
-            + ".img"
-        )
+        # provide recovery.img (if present), with fallback to boot.img (if present)
+        recoverykey = f"FILE_/full/{device}/{date}/recovery.img"
+        bootkey = f"FILE_/full/{device}/{date}/boot.img"
 
         h = r.hgetall(key)
 
@@ -126,11 +116,12 @@ def get_builds(device=None):
             "version": version,
             "type": buildtype,
         }
+        recovery = recoverykey if r.exists(recoverykey) else bootkey if r.exists(bootkey) else None
 
-        if r.exists(recoverykey):  # not everything will produce a recovery image.
-            filepath = recoverykey[5:]
+        if recovery: # not everything will produce a recovery image.
+            filepath = recovery[5:]
             filename = filepath.split("/")[-1]
-            h = r.hgetall(recoverykey)
+            h = r.hgetall(recovery)
             info["recovery"] = {
                 "sha256": h[b"sha256"].decode("utf-8"),
                 "sha1": h[b"sha1"].decode("utf-8"),
