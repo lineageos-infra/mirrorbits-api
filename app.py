@@ -7,6 +7,7 @@ import redis
 
 from datetime import datetime
 from flask import Flask, jsonify, request, Response
+from flask_apscheduler import APScheduler
 from flask_caching import Cache
 
 from prometheus_client import multiprocess
@@ -45,6 +46,8 @@ config = {
 }
 app.config.from_mapping(config)
 cache = Cache(app)
+scheduler = APScheduler(app)
+scheduler.start()
 
 REQUEST_LATENCY = Histogram(
     "flask_request_latency_seconds", "Request Latency", ["method", "endpoint"]
@@ -54,60 +57,13 @@ REQUEST_COUNT = Counter(
 )
 BASE_PATH = os.environ.get("MIRROR_BASE_PATH", "/data/mirror")
 
-
-def get_builds_v2(device):
-    trace = "%08x" % random.randrange(16 ** 8)
-    logging.debug(f"{trace} start get_builds_v2")
-    if device:
-        path = "FILE_/full/{}/*.zip".format(device)
-    else:
-        path = "FILE_/full/*.zip"
-    db = {}
-    logging.debug(f"{trace} start iterate keys")
-    for key in r.keys(path):
-        key = key.decode("utf-8")
-        filepath = key[5:]
-        _, _, device, date, filename = filepath.split("/")
-        _, version, _, buildtype, _, _ = filename.split("-")
-
-        timestamp = int(mktime(datetime.strptime(date, "%Y%m%d").timetuple()))
-
-        info = {
-            "date": "{}-{}-{}".format(date[0:4], date[4:6], date[6:8]),
-            "datetime": timestamp,
-            "version": version,
-            "type": buildtype,
-            "files": [],
-        }
-
-        artifacts_dir = os.path.dirname(key)
-        for filekey in r.keys(artifacts_dir + "/*"):
-            filekey = filekey.decode("utf-8")
-            h = r.hgetall(filekey)
-            filepath = filekey[5:]
-            info["files"].append(
-                {
-                    "filepath": filepath,
-                    "filename": os.path.basename(filepath),
-                    "sha256": h[b"sha256"].decode("utf-8"),
-                    "sha1": h[b"sha1"].decode("utf-8"),
-                    "size": int(h[b"size"].decode("utf-8")),
-                }
-            )
-
-        db.setdefault(device, []).append(info)
-    logging.debug(f"{trace} end iterate keys")
-    for key in db.keys():
-        db[key] = sorted(db[key], key=lambda k: k["datetime"])
-    logging.debug(f"{trace} end get_builds_v2")
-    return db
+builds_v2 = {}
+builds_v1 = {}
 
 
-def get_builds(device=None):
-    if device:
-        path = "FILE_/full/{}/*.zip".format(device)
-    else:
-        path = "FILE_/full/*.zip"
+@scheduler.task("interval", id="update_builds_v1", seconds=3600)
+def update_builds_v1():
+    path = "FILE_/full/*.zip"
     db = {}
     for key in r.keys(path):
         key = key.decode("utf-8")
@@ -160,7 +116,49 @@ def get_builds(device=None):
         db.setdefault(device, []).append(info)
     for key in db.keys():
         db[key] = sorted(db[key], key=lambda k: k["datetime"])
-    return db
+    builds_v1 = db
+
+
+@scheduler.task("interval", id="update_builds_v2", seconds=3600)
+def update_builds_v2():
+    path = "FILE_/full/*.zip"
+    db = {}
+    logging.debug(f"{trace} start iterate keys")
+    for key in r.keys(path):
+        key = key.decode("utf-8")
+        filepath = key[5:]
+        _, _, device, date, filename = filepath.split("/")
+        _, version, _, buildtype, _, _ = filename.split("-")
+
+        timestamp = int(mktime(datetime.strptime(date, "%Y%m%d").timetuple()))
+
+        info = {
+            "date": "{}-{}-{}".format(date[0:4], date[4:6], date[6:8]),
+            "datetime": timestamp,
+            "version": version,
+            "type": buildtype,
+            "files": [],
+        }
+
+        artifacts_dir = os.path.dirname(key)
+        for filekey in r.keys(artifacts_dir + "/*"):
+            filekey = filekey.decode("utf-8")
+            h = r.hgetall(filekey)
+            filepath = filekey[5:]
+            info["files"].append(
+                {
+                    "filepath": filepath,
+                    "filename": os.path.basename(filepath),
+                    "sha256": h[b"sha256"].decode("utf-8"),
+                    "sha1": h[b"sha1"].decode("utf-8"),
+                    "size": int(h[b"size"].decode("utf-8")),
+                }
+            )
+
+        db.setdefault(device, []).append(info)
+    for key in db.keys():
+        db[key] = sorted(db[key], key=lambda k: k["datetime"])
+    builds_v2 = db
 
 
 @app.before_request
@@ -180,14 +178,20 @@ def stop_timer(response):
 @app.route("/api/v1/builds/<device>")
 @cache.cached()
 def get_v1(device):
-    return jsonify(get_builds(device))
+    if device:
+        return jsonify({device: builds_v1.get("device", [])})
+    else:
+        return jsonify(builds_v1)
 
 
 @app.route("/api/v2/builds/", defaults={"device": None})
 @app.route("/api/v2/builds/<device>")
 @cache.cached()
 def get_v2(device):
-    return jsonify(get_builds_v2(device))
+    if device:
+        return jsonify({device: builds_v2.get("device", [])})
+    else:
+        return jsonify(builds_v2)
 
 
 @app.route("/api/metrics")
