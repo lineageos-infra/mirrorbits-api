@@ -1,5 +1,7 @@
 import logging
 import os
+import sys
+import random
 import re
 import redis
 
@@ -79,7 +81,6 @@ def get_builds_v2(device):
         }
 
         artifacts_dir = os.path.dirname(key)
-        logging.debug(f"{trace} start iterate artifacts")
         for filekey in r.keys(artifacts_dir + "/*"):
             filekey = filekey.decode("utf-8")
             h = r.hgetall(filekey)
@@ -93,7 +94,6 @@ def get_builds_v2(device):
                     "size": int(h[b"size"].decode("utf-8")),
                 }
             )
-        logging.debug(f"{trace} end iterate artifacts")
 
         db.setdefault(device, []).append(info)
     logging.debug(f"{trace} end iterate keys")
