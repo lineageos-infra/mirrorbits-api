@@ -1,3 +1,4 @@
+import logging
 import os
 import re
 import redis
@@ -16,6 +17,16 @@ from prometheus_client import (
     Histogram,
 )
 from time import mktime, time
+
+
+root = logging.getLogger()
+root.setLevel(logging.DEBUG)
+
+handler = logging.StreamHandler(sys.stdout)
+handler.setLevel(logging.DEBUG)
+formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+handler.setFormatter(formatter)
+root.addHandler(handler)
 
 # {b'sha256': b'fd5ef1c2aebb3228ed8c11136ecd973bc3564ead7d00638c52776d8ee4c5de39', b'md5': b'', b'sha1': b'81d5c7158cf1c7c7ced9481dc97c6b9b5a56fc29', b'modTime': b'2017-12-04 10:03:58.186652669 +0100 CET', b'size': b'362439627'}
 # /full/bacon/20171127/lineage-14.1-20171127-nightly-bacon-signed.zip
@@ -43,11 +54,14 @@ BASE_PATH = os.environ.get("MIRROR_BASE_PATH", "/data/mirror")
 
 
 def get_builds_v2(device):
+    trace = '%08x' % random.randrange(16**8)
+    logging.debug(f'{trace} start get_builds_v2')
     if device:
         path = "FILE_/full/{}/*.zip".format(device)
     else:
         path = "FILE_/full/*.zip"
     db = {}
+    logging.debug(f'{trace} start iterate keys')
     for key in r.keys(path):
         key = key.decode("utf-8")
         filepath = key[5:]
@@ -65,6 +79,7 @@ def get_builds_v2(device):
         }
 
         artifacts_dir = os.path.dirname(key)
+        logging.debug(f'{trace} start iterate artifacts')
         for filekey in r.keys(artifacts_dir + "/*"):
             filekey = filekey.decode("utf-8")
             h = r.hgetall(filekey)
@@ -78,10 +93,13 @@ def get_builds_v2(device):
                     "size": int(h[b"size"].decode("utf-8")),
                 }
             )
+        logging.debug(f'{trace} end iterate artifacts')
 
         db.setdefault(device, []).append(info)
+    logging.debug(f'{trace} end iterate keys')
     for key in db.keys():
         db[key] = sorted(db[key], key=lambda k: k["datetime"])
+    logging.debug(f'{trace} end get_builds_v2')
     return db
 
 
