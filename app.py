@@ -24,7 +24,7 @@ root.setLevel(logging.DEBUG)
 
 handler = logging.StreamHandler(sys.stdout)
 handler.setLevel(logging.DEBUG)
-formatter = logging.Formatter('%(asctime)s - %(name)s - %(levelname)s - %(message)s')
+formatter = logging.Formatter("%(asctime)s - %(name)s - %(levelname)s - %(message)s")
 handler.setFormatter(formatter)
 root.addHandler(handler)
 
@@ -54,14 +54,14 @@ BASE_PATH = os.environ.get("MIRROR_BASE_PATH", "/data/mirror")
 
 
 def get_builds_v2(device):
-    trace = '%08x' % random.randrange(16**8)
-    logging.debug(f'{trace} start get_builds_v2')
+    trace = "%08x" % random.randrange(16 ** 8)
+    logging.debug(f"{trace} start get_builds_v2")
     if device:
         path = "FILE_/full/{}/*.zip".format(device)
     else:
         path = "FILE_/full/*.zip"
     db = {}
-    logging.debug(f'{trace} start iterate keys')
+    logging.debug(f"{trace} start iterate keys")
     for key in r.keys(path):
         key = key.decode("utf-8")
         filepath = key[5:]
@@ -79,7 +79,7 @@ def get_builds_v2(device):
         }
 
         artifacts_dir = os.path.dirname(key)
-        logging.debug(f'{trace} start iterate artifacts')
+        logging.debug(f"{trace} start iterate artifacts")
         for filekey in r.keys(artifacts_dir + "/*"):
             filekey = filekey.decode("utf-8")
             h = r.hgetall(filekey)
@@ -93,13 +93,13 @@ def get_builds_v2(device):
                     "size": int(h[b"size"].decode("utf-8")),
                 }
             )
-        logging.debug(f'{trace} end iterate artifacts')
+        logging.debug(f"{trace} end iterate artifacts")
 
         db.setdefault(device, []).append(info)
-    logging.debug(f'{trace} end iterate keys')
+    logging.debug(f"{trace} end iterate keys")
     for key in db.keys():
         db[key] = sorted(db[key], key=lambda k: k["datetime"])
-    logging.debug(f'{trace} end get_builds_v2')
+    logging.debug(f"{trace} end get_builds_v2")
     return db
 
 
