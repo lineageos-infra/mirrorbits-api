@@ -1,3 +1,4 @@
+import json
 import logging
 import os
 import sys
@@ -7,8 +8,6 @@ import redis
 
 from datetime import datetime
 from flask import Flask, jsonify, request, Response
-
-from apscheduler.schedulers.background import BackgroundScheduler
 
 from prometheus_client import multiprocess
 from prometheus_client import (
@@ -37,18 +36,6 @@ r = redis.StrictRedis(host="localhost", port=6379, db=0)
 
 app = Flask(__name__)
 
-# This should really be read from env - i doubt anyone else is crazy enough to run this
-config = {
-    "CACHE_DEFAULT_TIMEOUT": 3600,
-    "CACHE_TYPE": "RedisCache",
-    "CACHE_REDIS_HOST": "localhost",
-    "CACHE_REDIS_DB": 3,
-}
-app.config.from_mapping(config)
-
-scheduler = BackgroundScheduler()
-scheduler.start()
-
 REQUEST_LATENCY = Histogram(
     "flask_request_latency_seconds", "Request Latency", ["method", "endpoint"]
 )
@@ -56,50 +43,6 @@ REQUEST_COUNT = Counter(
     "flask_request_count", "Request Count", ["method", "endpoint", "status"]
 )
 BASE_PATH = os.environ.get("MIRROR_BASE_PATH", "/data/mirror")
-
-builds_v2 = {}
-
-def update_builds_v2():
-    path = "FILE_/full/*.zip"
-    db = {}
-    logging.debug(f"{trace} start iterate keys")
-    for key in r.keys(path):
-        key = key.decode("utf-8")
-        filepath = key[5:]
-        _, _, device, date, filename = filepath.split("/")
-        _, version, _, buildtype, _, _ = filename.split("-")
-
-        timestamp = int(mktime(datetime.strptime(date, "%Y%m%d").timetuple()))
-
-        info = {
-            "date": "{}-{}-{}".format(date[0:4], date[4:6], date[6:8]),
-            "datetime": timestamp,
-            "version": version,
-            "type": buildtype,
-            "files": [],
-        }
-
-        artifacts_dir = os.path.dirname(key)
-        for filekey in r.keys(artifacts_dir + "/*"):
-            filekey = filekey.decode("utf-8")
-            h = r.hgetall(filekey)
-            filepath = filekey[5:]
-            info["files"].append(
-                {
-                    "filepath": filepath,
-                    "filename": os.path.basename(filepath),
-                    "sha256": h[b"sha256"].decode("utf-8"),
-                    "sha1": h[b"sha1"].decode("utf-8"),
-                    "size": int(h[b"size"].decode("utf-8")),
-                }
-            )
-
-        db.setdefault(device, []).append(info)
-    for key in db.keys():
-        db[key] = sorted(db[key], key=lambda k: k["datetime"])
-    builds_v2 = db
-
-scheduler.add_job(update_builds_v2, 'interval', hours=1, jitter=120)
 
 @app.before_request
 def start_timer():
@@ -123,6 +66,8 @@ def get_v1(device):
 @app.route("/api/v2/builds/", defaults={"device": None})
 @app.route("/api/v2/builds/<device>")
 def get_v2(device):
+    cache = r.get("MIRRORBITS_API_V2_BUILDS").decode("utf-8")
+    builds_v2 = json.loads(cache)
     if device:
         return jsonify({device: builds_v2.get("device", [])})
     else:
