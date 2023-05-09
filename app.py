@@ -69,7 +69,7 @@ def get_v2(device):
     cache = r.get("MIRRORBITS_API_V2_BUILDS").decode("utf-8")
     builds_v2 = json.loads(cache)
     if device:
-        return jsonify({device: builds_v2.get("device", [])})
+        return jsonify({device: builds_v2.get(device, [])})
     else:
         return jsonify(builds_v2)
 
