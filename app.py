@@ -7,8 +7,8 @@ import redis
 
 from datetime import datetime
 from flask import Flask, jsonify, request, Response
-from flask_apscheduler import APScheduler
-from flask_caching import Cache
+
+from apscheduler.schedulers.background import BackgroundScheduler
 
 from prometheus_client import multiprocess
 from prometheus_client import (
@@ -45,8 +45,8 @@ config = {
     "CACHE_REDIS_DB": 3,
 }
 app.config.from_mapping(config)
-cache = Cache(app)
-scheduler = APScheduler(app)
+
+scheduler = BackgroundScheduler()
 scheduler.start()
 
 REQUEST_LATENCY = Histogram(
@@ -58,68 +58,7 @@ REQUEST_COUNT = Counter(
 BASE_PATH = os.environ.get("MIRROR_BASE_PATH", "/data/mirror")
 
 builds_v2 = {}
-builds_v1 = {}
 
-
-@scheduler.task("interval", id="update_builds_v1", seconds=3600)
-def update_builds_v1():
-    path = "FILE_/full/*.zip"
-    db = {}
-    for key in r.keys(path):
-        key = key.decode("utf-8")
-        filepath = key[5:]
-        _, _, device, date, filename = filepath.split("/")
-        _, version, _, buildtype, _, _ = filename.split("-")
-        # recovery/bacon/20190711/lineage-16.0-20190711-recovery-bacon.img
-        recoverykey = (
-            "FILE_/recovery/"
-            + device
-            + "/"
-            + date
-            + "/lineage-"
-            + version
-            + "-"
-            + date
-            + "-recovery-"
-            + device
-            + ".img"
-        )
-
-        h = r.hgetall(key)
-
-        timestamp = int(mktime(datetime.strptime(date, "%Y%m%d").timetuple()))
-
-        info = {
-            "sha256": h[b"sha256"].decode("utf-8"),
-            "sha1": h[b"sha1"].decode("utf-8"),
-            "size": int(h[b"size"].decode("utf-8")),
-            "date": "{}-{}-{}".format(date[0:4], date[4:6], date[6:8]),
-            "datetime": timestamp,
-            "filename": filename,
-            "filepath": filepath,
-            "version": version,
-            "type": buildtype,
-        }
-
-        if r.exists(recoverykey):  # not everything will produce a recovery image.
-            filepath = recoverykey[5:]
-            filename = filepath.split("/")[-1]
-            h = r.hgetall(recoverykey)
-            info["recovery"] = {
-                "sha256": h[b"sha256"].decode("utf-8"),
-                "sha1": h[b"sha1"].decode("utf-8"),
-                "size": int(h[b"size"].decode("utf-8")),
-                "filename": filename,
-                "filepath": filepath,
-            }
-
-        db.setdefault(device, []).append(info)
-    for key in db.keys():
-        db[key] = sorted(db[key], key=lambda k: k["datetime"])
-    builds_v1 = db
-
-
-@scheduler.task("interval", id="update_builds_v2", seconds=3600)
 def update_builds_v2():
     path = "FILE_/full/*.zip"
     db = {}
@@ -160,6 +99,7 @@ def update_builds_v2():
         db[key] = sorted(db[key], key=lambda k: k["datetime"])
     builds_v2 = db
 
+scheduler.add_job(update_builds_v2, 'interval', hours=1, jitter=120)
 
 @app.before_request
 def start_timer():
@@ -176,17 +116,12 @@ def stop_timer(response):
 
 @app.route("/api/v1/builds/", defaults={"device": None})
 @app.route("/api/v1/builds/<device>")
-@cache.cached()
 def get_v1(device):
-    if device:
-        return jsonify({device: builds_v1.get("device", [])})
-    else:
-        return jsonify(builds_v1)
+    return jsonify({"error": "this is deprecated, use /v2/"})
 
 
 @app.route("/api/v2/builds/", defaults={"device": None})
 @app.route("/api/v2/builds/<device>")
-@cache.cached()
 def get_v2(device):
     if device:
         return jsonify({device: builds_v2.get("device", [])})
