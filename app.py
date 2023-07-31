@@ -44,6 +44,7 @@ REQUEST_COUNT = Counter(
 )
 BASE_PATH = os.environ.get("MIRROR_BASE_PATH", "/data/mirror")
 
+
 @app.before_request
 def start_timer():
     request._stats_start = time()

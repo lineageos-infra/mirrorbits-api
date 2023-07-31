@@ -20,6 +20,7 @@ root.addHandler(handler)
 # /full/bacon/20171127/lineage-14.1-20171127-nightly-bacon-signed.zip
 r = redis.StrictRedis(host="localhost", port=6379, db=0)
 
+
 def update_builds_v2():
     path = "FILE_/full/*.zip"
     db = {}
@@ -59,6 +60,7 @@ def update_builds_v2():
         db[key] = sorted(db[key], key=lambda k: k["datetime"])
     builds_v2 = db
     r.set("MIRRORBITS_API_V2_BUILDS", json.dumps(db))
+
 
 if __name__ == "__main__":
     logging.info("starting update")
