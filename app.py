@@ -42,7 +42,6 @@ REQUEST_LATENCY = Histogram(
 REQUEST_COUNT = Counter(
     "flask_request_count", "Request Count", ["method", "endpoint", "status"]
 )
-BASE_PATH = os.environ.get("MIRROR_BASE_PATH", "/data/mirror")
 
 
 @app.before_request
