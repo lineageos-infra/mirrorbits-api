@@ -97,7 +97,8 @@ def update_builds_v2():
 
 
 if __name__ == "__main__":
-    logging.info("starting update")
-    update_builds_v2()
-    logging.info("update finished, sleeping 60m")
-    sleep(3600)
+    while True:
+        logging.info("starting update")
+        update_builds_v2()
+        logging.info("update finished, sleeping 60m")
+        sleep(3600)
