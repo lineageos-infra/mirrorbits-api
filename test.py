@@ -6,6 +6,7 @@ import fakeredis
 redis.StrictRedis = fakeredis.FakeStrictRedis
 
 import app
+import cron
 
 
 class TestGetBuilds(unittest.TestCase):
@@ -13,6 +14,7 @@ class TestGetBuilds(unittest.TestCase):
         app.app.config["TESTING"] = True
         app.app.config["DEBUG"] = False
         self.app = app.app.test_client()
+        cron.update_builds_v2()
 
     def test_api_call(self):
         response = self.app.get("/api/v2/builds/")
