@@ -5,7 +5,7 @@ import redis
 import json
 from datetime import datetime
 from struct import unpack
-from time import mktime, time, sleep
+from time import mktime, sleep
 
 root = logging.getLogger()
 root.setLevel(logging.DEBUG)
@@ -44,7 +44,7 @@ def read_os_patch_level(path):
                 return "{:04d}-{:02d}".format(
                     2000 + (os_patch_level >> 4), os_patch_level & ((1 << 4) - 1)
                 )
-    except:
+    except Exception:
         logging.warning(f"Failed to read SPL for {path}", exc_info=True)
 
     return None

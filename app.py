@@ -1,12 +1,8 @@
 import json
 import logging
-import os
 import sys
-import random
-import re
 import redis
 
-from datetime import datetime
 from flask import Flask, jsonify, request, Response
 
 from prometheus_client import multiprocess
@@ -14,11 +10,10 @@ from prometheus_client import (
     generate_latest,
     CollectorRegistry,
     CONTENT_TYPE_LATEST,
-    Gauge,
     Counter,
     Histogram,
 )
-from time import mktime, time
+from time import time
 
 
 root = logging.getLogger()
