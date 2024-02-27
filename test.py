@@ -20,6 +20,11 @@ class TestGetBuilds(unittest.TestCase):
         response = self.app.get("/api/v2/builds/")
         self.assertEqual(response.status_code, 200)
 
+    def test_deprecated_api_call(self):
+        response = self.app.get("/api/v1/builds/")
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(response.json, {"error": "this is deprecated, use /v2/"})
+
 
 if __name__ == "__main__":
     unittest.main()
