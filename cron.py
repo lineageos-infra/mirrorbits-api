@@ -3,10 +3,9 @@ import os
 import sys
 import redis
 import json
-from avbtool import Avb, AvbPropertyDescriptor, ImageHandler
 from datetime import datetime
-from struct import unpack
 from time import mktime, time, sleep
+from zipfile import ZipFile
 
 root = logging.getLogger()
 root.setLevel(logging.DEBUG)
@@ -27,36 +26,12 @@ BASE_PATH = os.environ.get("MIRROR_BASE_PATH", "/data/mirror")
 
 def read_os_patch_level(path):
     try:
-        with open(path, "rb") as f:
-            f.seek(8)  # ANDROID! (boot_magic)
+        with ZipFile(path) as f:
+            for line in f.read('META-INF/com/android/metadata').splitlines():
+                key, value = line.split(b'=', maxsplit=1)
 
-            kernel_ramdisk_second_info = unpack("9I", f.read(9 * 4))
-            header_version = kernel_ramdisk_second_info[8]
-
-            # In header version 0, this field was used for DT size
-            if header_version < 3 or header_version > 12:
-                os_version_patch_level = unpack("I", f.read(1 * 4))[0]
-            else:
-                os_version_patch_level = kernel_ramdisk_second_info[2]
-
-            os_patch_level = os_version_patch_level & ((1 << 11) - 1)
-
-            if os_patch_level != 0:
-                return "{:04d}-{:02d}".format(
-                    2000 + (os_patch_level >> 4), os_patch_level & ((1 << 4) - 1)
-                )
-
-            # If image does not contain a valid SPL date, try parsing AVB descriptors
-            (_, _, descriptors, _) = Avb()._parse_image(
-                ImageHandler(path, read_only=True)
-            )
-
-            for descriptor in descriptors:
-                if (
-                    isinstance(descriptor, AvbPropertyDescriptor)
-                    and descriptor.key == "com.android.build.boot.security_patch"
-                ):
-                    return descriptor.value.decode()
+                if key == b"post-security-patch-level":
+                    return value.decode()
     except:
         logging.warning(f"Failed to read SPL for {path}", exc_info=True)
 
@@ -79,7 +54,7 @@ def update_builds_v2():
             "datetime": timestamp,
             "version": version,
             "type": buildtype,
-            "os_patch_level": None,
+            "os_patch_level": read_os_patch_level(BASE_PATH + filepath),
             "files": [],
         }
 
@@ -98,9 +73,6 @@ def update_builds_v2():
                     "size": int(h[b"size"].decode("utf-8")),
                 }
             )
-
-            if filename == "boot.img":
-                info["os_patch_level"] = read_os_patch_level(BASE_PATH + filepath)
 
         db.setdefault(device, []).append(info)
     for key in db.keys():
