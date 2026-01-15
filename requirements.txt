@@ -13,4 +13,4 @@ pathspec==0.11.0
 platformdirs==3.0.0
 prometheus-client==0.16.0
 redis==4.5.4
-Werkzeug==2.2.3
+Werkzeug==3.0.1
