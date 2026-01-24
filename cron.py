@@ -24,18 +24,22 @@ r = redis.StrictRedis(host="localhost", port=6379, db=0)
 BASE_PATH = os.environ.get("MIRROR_BASE_PATH", "/data/mirror")
 
 
-def read_os_patch_level(path):
+def read_android_metadata(path, *keys):
+    ret = [None] * len(keys)
+
     try:
         with ZipFile(path) as f:
-            for line in f.read("META-INF/com/android/metadata").splitlines():
-                key, value = line.split(b"=", maxsplit=1)
+            for line in f.read("META-INF/com/android/metadata").decode().splitlines():
+                key, value = line.split("=", maxsplit=1)
 
-                if key == b"post-security-patch-level":
-                    return value.decode()
+                if key in keys:
+                    ret[keys.index(key)] = value
     except:
-        logging.warning(f"Failed to read SPL for {path}", exc_info=True)
+        logging.warning(
+            f"Failed to read META-INF/com/android/metadata for {path}", exc_info=True
+        )
 
-    return None
+    return ret
 
 
 def update_builds_v2():
@@ -47,14 +51,23 @@ def update_builds_v2():
         _, _, device, date, filename = filepath.split("/")
         _, version, _, buildtype, _, _ = filename.split("-")
 
-        timestamp = int(mktime(datetime.strptime(date, "%Y%m%d").timetuple()))
+        os_patch_level, timestamp = read_android_metadata(
+            BASE_PATH + filepath,
+            "post-security-patch-level",
+            "post-timestamp",
+        )
+
+        if not timestamp:
+            timestamp = int(mktime(datetime.strptime(date, "%Y%m%d").timetuple()))
+        else:
+            timestamp = int(timestamp)
 
         info = {
             "date": "{}-{}-{}".format(date[0:4], date[4:6], date[6:8]),
             "datetime": timestamp,
             "version": version,
             "type": buildtype,
-            "os_patch_level": read_os_patch_level(BASE_PATH + filepath),
+            "os_patch_level": os_patch_level,
             "files": [],
         }
 
