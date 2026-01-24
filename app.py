@@ -20,7 +20,6 @@ from prometheus_client import (
 )
 from time import mktime, time
 
-
 root = logging.getLogger()
 root.setLevel(logging.DEBUG)
 
