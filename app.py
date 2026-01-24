@@ -66,8 +66,8 @@ def get_v1(device):
 @app.route("/api/v2/builds/", defaults={"device": None})
 @app.route("/api/v2/builds/<device>")
 def get_v2(device):
-    cache = r.get("MIRRORBITS_API_V2_BUILDS").decode("utf-8")
-    builds_v2 = json.loads(cache)
+    cache = r.get("MIRRORBITS_API_V2_BUILDS") or b"{}"
+    builds_v2 = json.loads(cache.decode("utf-8"))
     if device:
         return jsonify({device: builds_v2.get(device, [])})
     else:
