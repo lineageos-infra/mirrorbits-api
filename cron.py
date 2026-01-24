@@ -27,8 +27,8 @@ BASE_PATH = os.environ.get("MIRROR_BASE_PATH", "/data/mirror")
 def read_os_patch_level(path):
     try:
         with ZipFile(path) as f:
-            for line in f.read('META-INF/com/android/metadata').splitlines():
-                key, value = line.split(b'=', maxsplit=1)
+            for line in f.read("META-INF/com/android/metadata").splitlines():
+                key, value = line.split(b"=", maxsplit=1)
 
                 if key == b"post-security-patch-level":
                     return value.decode()
