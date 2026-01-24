@@ -1,7 +1,7 @@
 FROM golang:1.17 as overmind
 RUN GO111MODULE=on go get -u github.com/DarthSim/overmind/v2
 
-FROM python:3.10
+FROM python:3.14
 COPY --from=overmind /go/bin/overmind /usr/local/bin/overmind
 
 RUN apt update && \
