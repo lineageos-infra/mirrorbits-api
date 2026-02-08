@@ -52,13 +52,13 @@ def update_builds_v2():
         try:
             _, _, device, date, filename = filepath.split("/")
         except:
-            print("Invalid filepath", filepath)
+            logging.warning("Invalid filepath %s", filepath)
             continue
 
         try:
             _, version, _, buildtype, _, _ = filename.split("-")
         except:
-            print("Invalid filename", filename)
+            logging.warning("Invalid filename %s", filename)
             continue
 
         os_patch_level, timestamp = read_android_metadata(
