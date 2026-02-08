@@ -48,8 +48,18 @@ def update_builds_v2():
     for key in r.keys(path):
         key = key.decode("utf-8")
         filepath = key[5:]
-        _, _, device, date, filename = filepath.split("/")
-        _, version, _, buildtype, _, _ = filename.split("-")
+
+        try:
+            _, _, device, date, filename = filepath.split("/")
+        except:
+            print("Invalid filepath", filepath)
+            continue
+
+        try:
+            _, version, _, buildtype, _, _ = filename.split("-")
+        except:
+            print("Invalid filename", filename)
+            continue
 
         os_patch_level, timestamp = read_android_metadata(
             BASE_PATH + filepath,
