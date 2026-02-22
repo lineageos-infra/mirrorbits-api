@@ -100,7 +100,6 @@ def update_builds_v2():
         db.setdefault(device, []).append(info)
     for key in db.keys():
         db[key] = sorted(db[key], key=lambda k: k["datetime"])
-    builds_v2 = db
     r.set("MIRRORBITS_API_V2_BUILDS", json.dumps(db))
 
 
