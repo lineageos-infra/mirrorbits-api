@@ -100,7 +100,10 @@ def update_builds_v2():
         db.setdefault(device, []).append(info)
     for key in db.keys():
         db[key] = sorted(db[key], key=lambda k: k["datetime"])
-    r.set("MIRRORBITS_API_V2_BUILDS", json.dumps(db))
+    try:
+        r.set("MIRRORBITS_API_V2_BUILDS", json.dumps(db))
+    except:
+        logging.warning("MIRRORBITS_API_V2_BUILDS update failed", exc_info=True)
 
 
 if __name__ == "__main__":
