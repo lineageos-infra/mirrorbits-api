@@ -61,8 +61,9 @@ def update_builds_v2():
             logging.warning("Invalid filename %s", filename)
             continue
 
-        os_patch_level, timestamp = read_android_metadata(
+        os_sdk_level, os_patch_level, timestamp = read_android_metadata(
             BASE_PATH + filepath,
+            "post-sdk-level",
             "post-security-patch-level",
             "post-timestamp",
         )
@@ -77,6 +78,7 @@ def update_builds_v2():
             "datetime": timestamp,
             "version": version,
             "type": buildtype,
+            "os_sdk_level": os_sdk_level,
             "os_patch_level": os_patch_level,
             "files": [],
         }
