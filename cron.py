@@ -68,6 +68,9 @@ def update_builds_v2():
             "post-timestamp",
         )
 
+        if os_sdk_level:
+            os_sdk_level = int(os_sdk_level)
+
         if not timestamp:
             timestamp = int(mktime(datetime.strptime(date, "%Y%m%d").timetuple()))
         else:
