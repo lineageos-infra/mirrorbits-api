@@ -1,9 +1,4 @@
-FROM golang:1.17 as overmind
-RUN GO111MODULE=on go get -u github.com/DarthSim/overmind/v2
-
 FROM python:3.14
-COPY --from=overmind /go/bin/overmind /usr/local/bin/overmind
-
 RUN apt update && \
     apt install -y --no-install-recommends tmux
 
@@ -18,4 +13,4 @@ EXPOSE 8084
 
 ENV prometheus_multiproc_dir=/app/metrics/
 
-CMD overmind start
+CMD honcho start
